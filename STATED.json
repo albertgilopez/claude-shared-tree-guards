@@ -1,12 +1,12 @@
 {
-  "written_at": "2026-09-24T12:55:00+02:00",
+  "written_at": "2026-09-24T13:20:00+02:00",
   "at_commit": "9abe995ad5251b82ed44c7abac191745b42f8b97",
-  "where_we_are": "T1-T4 done and green on Windows. The repo is installable (validated + installed locally from a path marketplace) and the commit-guard blocks for real behind the co-tenancy gate. 16/17 acceptance cases pass, 3 skip (they need overwrite-guard, T5). The bench was proven able to fail: mutating the guard to never block takes it from 16 pass/0 fail to 12 pass/4 fail.",
+  "where_we_are": "T1-T4 done and green on Windows, end to end. The plugin is installed at user scope on HP, and a real `claude -p` session in a shared repo is blocked by it: the model quoted the BLOCKED message and no commit was created (test/e2e-real-session.mjs). 17/18 acceptance cases pass, 3 skip (they need overwrite-guard, T5); 12 library tests. The bench was proven able to fail: mutating the guard to never block takes it from 16 pass/0 fail to 12 pass/4 fail.",
   "next": [
-    "T5 — port overwrite-guard (AC-08, AC-09); unifies on exit 2 + stderr, drops the permissionDecision JSON protocol the KB version used",
-    "T6 — negative-control suite: one mutation per guard that the bench must catch (today this was done by hand, once)",
-    "T7 — DR-8: prove `git status --porcelain` is unchanged after running every guard",
-    "T8 — measure the per-call cost with solo and with shared, and publish the number in the README"
+    "T5 — port overwrite-guard (AC-08, AC-09) on exit 2 + stderr; it must use tree scope too",
+    "T6 — negative-control suite: one mutation per guard, permanent (today it was done by hand, once)",
+    "T7 — DR-8 as a test: `git status --porcelain` unchanged after every guard",
+    "T8 — measure the per-call cost with solo and with shared, publish the number"
   ],
   "blocked": [],
   "waiting_on_albert": [
@@ -15,9 +15,11 @@
   ],
   "measured": {
     "date": "2026-09-24",
-    "session_identity": "(session_id, CLAUDE_PID) — probe-measured across SessionStart/PreToolUse/SessionEnd; process.pid and process.ppid are ephemeral and unusable",
-    "cases": "16 pass / 0 fail / 3 skip",
-    "lib_tests": "9 pass / 0 fail",
+    "session_identity": "(session_id, CLAUDE_PID) — probe-measured across SessionStart/PreToolUse/SessionEnd; process.pid and process.ppid are ephemeral and unusable (D-01)",
+    "worktree_scope": "linked worktrees share --git-common-dir but have separate indexes (.git/worktrees/<n>/index) — guards use tree scope, the banner uses clone scope (D-07)",
+    "cases": "17 pass / 0 fail / 3 skip",
+    "lib_tests": "12 pass / 0 fail",
+    "real_session": "claude -p blocked; model quoted BLOCKED; 0 new commits",
     "negative_control": "guard mutated to never block -> 12 pass / 4 fail",
     "linux_ci": "not run yet — the CI workflow exists but nothing has been pushed"
   },

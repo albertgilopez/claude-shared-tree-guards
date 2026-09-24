@@ -168,7 +168,9 @@ if (require.main === module) {
     if (!root) process.exit(0);                                   // not a repo: silence (AC-12)
 
     // The gate that makes this publishable: with one session, say nothing at all.
-    const co = sessions.state({ ...payload, cwd });
+    // Scope 'tree': a linked worktree has its OWN index, so a session in another worktree of
+    // this clone cannot have staged anything into the index we are about to commit.
+    const co = sessions.state({ ...payload, cwd }, Date.now(), { scope: 'tree' });
     if (co.state !== 'shared') process.exit(0);
 
     const verdict = evaluate(cmd, root);

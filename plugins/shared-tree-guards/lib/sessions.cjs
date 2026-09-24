@@ -33,7 +33,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { gitCommonDir } = require('./git.cjs');
+const { gitCommonDir, topLevel } = require('./git.cjs');
 
 const DIR_NAME = 'claude-sessions';
 const IDLE_MINUTES = Number(process.env.SHARED_TREE_GUARDS_IDLE_MINUTES || 180);
@@ -59,11 +59,13 @@ function pidAlive(pid) {
 function identify(payload = {}) {
   const id = payload.session_id || process.env.CLAUDE_CODE_SESSION_ID || null;
   const pid = Number(process.env.CLAUDE_PID || 0) || null;
+  const cwd = payload.cwd || process.cwd();
   return {
     id,
     pid,
     transcript: payload.transcript_path || null,
-    cwd: payload.cwd || process.cwd(),
+    cwd,
+    toplevel: topLevel(cwd),
   };
 }
 
@@ -93,6 +95,7 @@ function register(payload = {}, now = Date.now()) {
       pid: me.pid,
       transcript: me.transcript,
       cwd: me.cwd,
+      toplevel: me.toplevel,
       startedAt,
       touchedAt: new Date(now).toISOString(),
       host: require('os').hostname(),
@@ -164,13 +167,35 @@ function list(cwd, now = Date.now()) {
 /**
  * `solo` | `shared` | `unknown`, plus the other live sessions.
  * `payload` identifies us so we are not counted as our own co-tenant.
+ *
+ * TWO SCOPES, and they are not the same thing (measured 2026-09-24):
+ *
+ *   scope 'clone' (default) — everyone under the same `--git-common-dir`. This is what the
+ *     SessionStart banner reports, and it is genuinely informational: those sessions do share
+ *     refs, the object store and the stash.
+ *
+ *   scope 'tree' — only sessions with the same `--show-toplevel`. This is what a GUARD must
+ *     use, because two linked worktrees of one clone have SEPARATE indexes
+ *     (`.git/worktrees/<name>/index`) and separate working trees. Blocking a private
+ *     worktree's commit with "this may be their work" is false and, worse, it is the message
+ *     that gets a plugin uninstalled. In a workspace that opens one worktree per session —
+ *     which is exactly the workflow this plugin is for — that would be every single commit.
  */
-function state(payload = {}, now = Date.now()) {
+function state(payload = {}, now = Date.now(), { scope = 'clone' } = {}) {
   const me = identify(payload);
   const live = list(me.cwd, now);
   if (live === null) return { state: 'unknown', others: [] };
-  const others = live.filter((e) => e.id !== me.id);
-  return { state: others.length > 0 ? 'shared' : 'solo', others, self: me };
+  // Dedupe by pid as well as by id. One PROCESS is one session: if SessionStart fires again
+  // under a new session_id for the same process (a /clear, a /compact), the old entry is still
+  // in the registry and we would count ourselves as our own co-tenant — `shared` with nobody,
+  // for up to IDLE_MINUTES. That is exactly the false `shared` D-02 says we cannot afford.
+  let others = live.filter((e) => e.id !== me.id && !(me.pid && e.pid === me.pid));
+  if (scope === 'tree') {
+    // An entry written before `toplevel` existed has none: keep it rather than silently
+    // dropping a real co-tenant. Fail towards "still visible", not towards a false solo.
+    others = others.filter((e) => !e.toplevel || !me.toplevel || e.toplevel === me.toplevel);
+  }
+  return { state: others.length > 0 ? 'shared' : 'solo', others, self: me, scope };
 }
 
 module.exports = {

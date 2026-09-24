@@ -107,3 +107,9 @@
   repo: { staged_deletions_of_present_files: [z.md] }
   input: { command: 'git rm --cached z.md && git commit -m "x"' }
   expected: { exit: 0 }
+
+- id: AC-18
+  guard: cotenancy
+  repo: { live_sessions: 2, other_in_linked_worktree: true }
+  input: { mode: list, scope: tree }
+  expected: { state: solo, others: 0 }

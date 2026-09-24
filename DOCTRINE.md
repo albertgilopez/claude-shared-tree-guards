@@ -68,3 +68,38 @@ is how guards get switched off:
 And one false-**negative** shape, which is worse because it grants permission silently: ` -- `
 inside a commit message used to look like a pathspec and waved the whole index through. The scan
 for `--` skips quoted regions.
+
+## D-07 · A linked worktree is a different working tree, and the guards must know
+
+Measured 2026-09-24 on a real repo with a linked worktree:
+
+```
+main worktree   --git-common-dir: <repo>/.git      index: <repo>/.git/index
+linked worktree --git-common-dir: <repo>/.git      index: <repo>/.git/worktrees/<name>/index
+```
+
+Same registry, **different index, different working tree**. So `state()` has two scopes and
+they are not interchangeable:
+
+- `clone` — everyone under the same `--git-common-dir`. What the SessionStart banner reports,
+  and it is true: those sessions do share refs, objects and the stash.
+- `tree` — only sessions with the same `--show-toplevel`. What a **guard** must use.
+
+**The cost this bought.** The SPEC asserted "two worktrees of the same clone count as shared"
+without measuring it. Had that shipped, the workspace this plugin was built for — which opens
+one worktree per session — would have had *every* commit blocked with "this may be their work",
+which is both false and the exact message that gets a plugin uninstalled (D-02).
+
+## D-08 · The test that drives the handler is not the test that drives Claude Code
+
+`e2e-manual.mjs` pipes a payload into the handler. That proves the handler. It does **not**
+prove `hooks.json` → PreToolUse → exit 2 → the model reads it, which is the loop that was
+silently broken in the thing this was ported from. `e2e-real-session.mjs` runs a real
+`claude -p` against a real repo with a real second live process, and asserts the model quoted
+the block and that no commit exists afterwards.
+
+Two attempts at it failed on the *fixture*, not the code, and both failures were instructive:
+first an MSYS shell pid (not a Windows pid) made the planted session look dead → `solo` →
+silence, which is the gate working correctly; then `shell: true` on Windows mangled the argv
+and the model received the single word `"In"`. **A test that silently asks the wrong question
+is worse than no test.** ASCII prompt, no shell.

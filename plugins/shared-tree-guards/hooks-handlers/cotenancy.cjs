@@ -8,8 +8,9 @@
  * all — which is what makes this plugin safe to publish: for almost every installation it is
  * indistinguishable from not having it.
  *
- *   node cotenancy.cjs --list            # human list of live sessions in this repo
- *   node cotenancy.cjs --list --json     # { state, others }
+ *   node cotenancy.cjs --list                  # human list of live sessions in this repo
+ *   node cotenancy.cjs --list --json           # { state, others }
+ *   node cotenancy.cjs --list --scope tree     # only sessions sharing this working tree
  */
 const sessions = require('../lib/sessions.cjs');
 const { readPayload } = require('../lib/payload.cjs');
@@ -42,7 +43,9 @@ if (process.argv.includes('--list')) {
     cwd: process.env.SHARED_TREE_GUARDS_CWD || process.cwd(),
     session_id: process.env.CLAUDE_CODE_SESSION_ID || null,
   };
-  const res = sessions.state(payload);
+  const si = process.argv.indexOf('--scope');
+  const scope = si >= 0 ? process.argv[si + 1] : 'clone';
+  const res = sessions.state(payload, Date.now(), { scope });
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify({ state: res.state, others: res.others.length, entries: res.others }));
   } else if (res.state === 'shared') {

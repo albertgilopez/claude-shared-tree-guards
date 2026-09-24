@@ -12,7 +12,7 @@
  *   node test/run-cases.mjs --only AC-01,AC-16
  *   node test/run-cases.mjs --verbose
  */
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -107,11 +107,27 @@ function registryDirOf(repo) {
 
 const SELF_ID = 'the-session-under-test';
 
+// A pid that cannot exist. 999999 is a real, reachable pid on Linux (pid_max goes to 4194304).
+const DEAD_PID = 2 ** 31 - 1;
+
+// One long-lived child, reaped at exit, standing in for "another session's process".
+let _other = null;
+function otherPid() {
+  if (!_other) {
+    _other = spawn(process.execPath, ['-e', 'setTimeout(()=>{}, 600000)'], { stdio: 'ignore' });
+    process.on('exit', () => { try { _other.kill(); } catch {} });
+  }
+  return _other.pid;
+}
+
 /**
  * Plant `n` live sessions IN TOTAL, the first of which is the session under test itself —
  * so `live_sessions: 2` means "two sessions in this clone, one of them me", i.e. 1 other.
- * Live means: a pid that exists. We use this process's own pid, which is unambiguously
- * alive — no sleeping, no spawning, no flakiness.
+ *
+ * The OTHERS get a genuinely different live pid (a spawned child), not this process's pid:
+ * `state()` dedupes co-tenants by pid as well as by id, so reusing our own pid would make
+ * every planted "other" collapse into us and the whole bench would silently go green for the
+ * wrong reason. Measured: doing that took 16 pass/0 fail to 12 pass/4 fail.
  */
 function plantSessions(repo, n, opts = {}) {
   if (!n) return;
@@ -123,9 +139,10 @@ function plantSessions(repo, n, opts = {}) {
       path.join(dir, `${id}.json`),
       JSON.stringify({
         id,
-        pid: opts.dead ? 999999 : process.pid,
+        pid: opts.dead ? DEAD_PID : id === SELF_ID ? process.pid : otherPid(),
         transcript: null,
         cwd: repo,
+        toplevel: opts.otherToplevel && id !== SELF_ID ? opts.otherToplevel : repo,
         startedAt: new Date(Date.now() - 3600_000).toISOString(),
         touchedAt: new Date().toISOString(),
         host: os.hostname(),
@@ -135,15 +152,17 @@ function plantSessions(repo, n, opts = {}) {
 }
 
 // ---------------------------------------------------------------- running a case
-function runHandler(guard, repo, input, env) {
+function runHandler(guard, repo, input, env, runFrom) {
   const file = path.join(HANDLERS, HANDLER_FILE[guard]);
   if (!fs.existsSync(file)) return { skipped: `handler ${guard} not implemented yet` };
 
   if (input.mode === 'list') {
-    const r = spawnSync(process.execPath, [file, '--list', '--json'], {
+    const args = [file, '--list', '--json'];
+    if (input.scope) args.push('--scope', input.scope);
+    const r = spawnSync(process.execPath, args, {
       cwd: repo,
       encoding: 'utf8',
-      env: { ...process.env, ...env, SHARED_TREE_GUARDS_CWD: repo, CLAUDE_CODE_SESSION_ID: SELF_ID },
+      env: { ...process.env, ...env, SHARED_TREE_GUARDS_CWD: runFrom || repo, CLAUDE_CODE_SESSION_ID: SELF_ID },
     });
     return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
   }
@@ -208,15 +227,24 @@ for (const c of cases) {
 
     // Co-tenancy fixture. Default: one other live session, so the guards are ON.
     if (spec.git !== false) {
-      if (spec.live_sessions !== undefined) plantSessions(repo, spec.live_sessions, { includeSelf: true });
+      if (spec.live_sessions !== undefined) plantSessions(repo, spec.live_sessions, { includeSelf: true, otherToplevel: fs.realpathSync(repo) });
       else if (spec.dead_sessions !== undefined) plantSessions(repo, spec.dead_sessions, { dead: true });
       else plantSessions(repo, 1);
+    }
+
+    // A linked worktree of the SAME clone: shares the registry, has its own index.
+    let runFrom = null;
+    if (spec.other_in_linked_worktree) {
+      execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+      const wt = path.join(repo, 'wt');
+      execFileSync('git', ['worktree', 'add', '-q', '-b', 'side', wt], { cwd: repo, stdio: 'ignore' });
+      runFrom = fs.realpathSync(wt);   // the session under test lives in the worktree
     }
 
     const env = { ...(c.env || {}) };
     if (spec.git_on_path === false) env.PATH = pathWithoutGit();
 
-    const res = runHandler(guard, repo, c.input || {}, env);
+    const res = runHandler(guard, repo, c.input || {}, env, runFrom);
     if (res.skipped) {
       skip++;
       console.log(`SKIP ${c.id} [${guard}] — ${res.skipped}`);

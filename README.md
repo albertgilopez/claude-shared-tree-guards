@@ -55,7 +55,7 @@ See `DOCTRINE.md` D-01 for the measurement.
 ## Status
 
 Early. `commit-guard` and `cotenancy` are implemented and green locally on Windows
-(16 acceptance cases, 9 library tests); Linux is CI-pending. `overwrite-guard`, the cost
+(18 acceptance cases, 12 library tests, and a real `claude -p` session that gets blocked); Linux is CI-pending. `overwrite-guard`, the cost
 measurement and the formal negative-control suite are next. `SPEC.md` and `cases.yaml` are the
 contract: every acceptance criterion cites a case id, and the cases run against the real handlers
 in real temporary repositories — no mocks of git.

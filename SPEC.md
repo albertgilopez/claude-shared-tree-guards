@@ -113,7 +113,12 @@ Exit:   0 = passa · 2 = bloqueja (el missatge arriba al model)
 - Missatge de commit **multilínia**: la comanda no es pot partir per salts de línia.
 - Fitxer amb espais o accents al nom → camins amb cometes.
 - `.git` de només lectura o filesystem sense permisos → `unknown`, silenci.
-- Dos worktrees del mateix clon → **compten com a compartits** (comparteixen `.git` real).
+- Dos worktrees del mateix clon → compten com a compartits **per al banner** (comparteixen refs,
+  objectes i stash), però **NO per als guards**: mesurat 24/09/2026, un worktree enllaçat té
+  el seu propi índex a `.git/worktrees/<nom>/index` i el seu propi arbre. Un guard que
+  bloqueja per abast de clon bloquejaria **cada commit** d'un workspace que obre un worktree
+  per sessió — que és exactament el workflow per al qual existeix això. D'aquí els dos abasts
+  de `state()`: `clone` (informatiu) i `tree` (el que fan servir els guards).
 - Dos clons diferents → **no** compten.
 - PID reciclat pel sistema operatiu → l'entrada porta també la data d'arrencada del procés.
 
@@ -136,6 +141,7 @@ Exit:   0 = passa · 2 = bloqueja (el missatge arriba al model)
 - [ ] El missatge de bloqueig conté la comanda o els camins que ha jutjat (case: AC-15)
 - [ ] Amb **una sola sessió** (`solo`), el mateix cas d'AC-01 passa amb 0 i sense sortida (case: AC-16)
 - [ ] Un `git rm --cached` a la MATEIXA comanda no es confon amb un índex vell i passa amb 0 (case: AC-17)
+- [ ] Una sessió en un worktree **enllaçat** del mateix clon no compta com a co-tenant d'índex (case: AC-18)
 
 ## Verificació
 
