@@ -1,7 +1,7 @@
 {
-  "written_at": "2026-09-24T17:15:00+02:00",
+  "written_at": "2026-09-24T18:55:00+02:00",
   "at_commit": "aecde3736b576f7b908dcb75d11dacfce24bbaf8",
-  "where_we_are": "All three components done. T1-T10 complete. 22 acceptance cases (0 skip), 12 library tests, a 7-mutation negative-control suite where every mutation is caught, a DR-8 side-effects test, and two real claude -p sessions (blocked and warned). Public at github.com/albertgilopez/claude-shared-tree-guards, installed on HP from GitHub. Cost measured and it forced a design change (D-11).",
+  "where_we_are": "All three components done. T1-T10 complete. 22 acceptance cases (0 skip), 12 library tests, a 7-mutation negative-control suite where every mutation is caught, a DR-8 side-effects test, and two real claude -p sessions (blocked and warned). Public at github.com/albertgilopez/claude-shared-tree-guards, installed on HP from GitHub. Cost measured and it forced a design change (D-11). Everything in the repo is now English (SPEC translated, cases.yaml comments and fixture strings translated, the Catalan design doc dropped), and the scope is stated as Claude Code sessions specifically, in the manifests, the README, AGENTS, the SPEC and DOCTRINE D-13.",
   "next": [
     "T11 — install on DELL and WORKSTATION from GitHub (replaces propagating the hooks by hand)",
     "T13 — let the KB consume the plugin and retire its duplicated hooks, once this has flown green for a while",

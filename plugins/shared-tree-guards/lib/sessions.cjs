@@ -1,7 +1,13 @@
 'use strict';
 /**
- * lib/sessions.cjs — the session registry that answers one question: is anyone else
+ * lib/sessions.cjs — the registry that answers one question: is another CLAUDE CODE SESSION
  * working in this same clone right now?
+ *
+ * "Claude Code session" is the literal scope, not shorthand. An entry only exists because a
+ * SessionStart hook wrote it, so the only thing this can ever see is a Claude Code session with
+ * this plugin loaded. A script, a cron, another agent CLI or a session that was already open
+ * before the plugin was installed are all invisible here, and the guards will report `solo`.
+ * That boundary is in the README because a user has to know it before relying on it.
  *
  * WHERE IT LIVES — `<git-common-dir>/claude-sessions/`. Every worktree of a clone shares that
  * directory; two different clones never do. So the scope of detection is the scope of the

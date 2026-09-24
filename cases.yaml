@@ -1,5 +1,9 @@
-# cases.yaml — casos executables de shared-tree-guards.
-# Cada AC-NN del SPEC cita un id d'aqui. El runner munta un repo git temporal per cas.
+# cases.yaml - the executable cases behind SPEC.md.
+# Every AC-NN in the SPEC cites an id from here. The runner builds a temporary git repository
+# per case and drives the REAL hook handlers as child processes. No mocks of git.
+#
+# Unless a case says otherwise, one other live Claude Code session is planted in the repo, because
+# the guards are deliberately silent when you are alone. `live_sessions: 0` asserts that silence.
 
 - id: AC-01
   guard: commit-guard
@@ -10,13 +14,13 @@
 - id: AC-02
   guard: commit-guard
   repo: { staged: [a.md, b.md] }
-  input: { command: 'git add a.md && git commit -m "text -- amb guions"' }
+  input: { command: 'git add a.md && git commit -m "text -- with dashes"' }
   expected: { exit: 2, mentions: [b.md] }
 
 - id: AC-03
   guard: commit-guard
   repo: { staged: [a.md, b.md] }
-  input: { command: 'git commit -m "text -- guions" -- a.md' }
+  input: { command: 'git commit -m "text -- with dashes" -- a.md' }
   expected: { exit: 0 }
 
 - id: AC-04
@@ -89,12 +93,12 @@
 - id: AC-15
   guard: commit-guard
   repo: { staged: [a.md, b.md] }
-  input: { command: 'git add a.md && git commit -m "titol"' }
-  expected: { exit: 2, stderr_contains: 'git commit -m "titol"' }
+  input: { command: 'git add a.md && git commit -m "a title"' }
+  expected: { exit: 2, stderr_contains: 'git commit -m "a title"' }
 
-# Afegits 24/09/2026 en implementar T1-T4: el gate de co-tenancy era la peca que fa el
-# plugin publicable i NO tenia cap cas que l'afirmes sobre una comanda real (nomes AC-10/11
-# sobre el --list). Un invariant sense cas es prosa.
+# Added 2026-09-24 while implementing the first slice: the co-tenancy gate is the thing that makes
+# this plugin publishable and NO case asserted it over a real command (only AC-10/11, over --list).
+# An invariant without a case is prose.
 
 - id: AC-16
   guard: commit-guard
@@ -120,20 +124,20 @@
   input: { command: 'git checkout origin/main -- a.md' }
   expected: { exit: 0, stderr: '' }
 
-# AC-20 tanca el forat que el propi control negatiu va assenyalar: AC-18 prova l'abast 'tree'
-# pel CLI de cotenancy, pero cap cas el provava a traves d'un GUARD -- mutar 'tree'->'clone' al
-# commit-guard no feia fallar res.
+# AC-20 closes a hole the negative-control suite pointed at: AC-18 exercises 'tree' scope through
+# the cotenancy CLI, but no case exercised it through a GUARD -- mutating 'tree'->'clone' in
+# commit-guard made nothing fail.
 #
-# Per aixo el meu index ha de portar una resta MEVA (d.md) que la comanda no stageja: amb abast
-# 'tree' el guard ni s'executa (ningu comparteix el meu arbre) i passa; amb abast 'clone' es
-# despertaria per la sessio del tronc i bloquejaria un commit que nomes em concerneix a mi. Sense
-# el d.md, els dos abasts donen el mateix i el cas no prova res.
+# Hence my index must hold a leftover of MY OWN (d.md) that the command does not stage: under
+# 'tree' scope the guard does not even run (nobody shares my working tree) and it passes; under
+# 'clone' scope it would wake up because of the session in the main tree and block a commit that
+# concerns nobody but me. Without d.md both scopes behave identically and the case proves nothing.
 - id: AC-20
   guard: commit-guard
   repo:
-    staged: [a.md, b.md]            # l'altra sessio, al tronc
+    staged: [a.md, b.md]              # the other session's work, in the main tree
     live_sessions: 2
     self_in_linked_worktree: true
-    staged_in_worktree: [c.md, d.md]  # el MEU index, amb una resta meva que la comanda no stageja
+    staged_in_worktree: [c.md, d.md]  # MY index, with a leftover of mine the command does not stage
   input: { command: 'git add c.md && git commit -m "x"' }
   expected: { exit: 0, stderr: '' }

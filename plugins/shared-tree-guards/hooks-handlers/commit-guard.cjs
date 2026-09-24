@@ -6,7 +6,7 @@
  *
  * WHY (measured, not theorised)
  * -----------------------------
- * git has ONE index per clone. With more than one agent session in the same working tree,
+ * git has ONE index per clone. With more than one Claude Code session in the same working tree,
  * two perfectly ordinary commands become destructive:
  *
  *   A) `git commit -m "..."` with no `-- <paths>` commits the WHOLE index. Whatever another

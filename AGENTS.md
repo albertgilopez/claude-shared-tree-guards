@@ -4,9 +4,14 @@ What any agent (Claude Code, Codex, Cursor) needs before touching this repo.
 
 ## What this is
 
-A Claude Code plugin — and, in the same repo, the one-entry marketplace that serves it. It makes
-a git working tree **shared by more than one agent session** less dangerous. It does not make it
-safe; nothing can. See `SPEC.md` § "Fora d'abast".
+A Claude Code plugin, and in the same repo the one-entry marketplace that serves it. It makes a
+git working tree **shared by more than one Claude Code session** less dangerous. It does not make
+it safe; nothing can. See `SPEC.md` § "Explicitly out of scope".
+
+**The scope is Claude Code, and that is load-bearing.** The whole mechanism rests on sessions
+registering themselves in `<git-common-dir>/claude-sessions/`, and the only thing that does that
+is a Claude Code session with this plugin loaded. Do not describe it as guarding against "agents"
+or "other tools": it does not see them, and saying otherwise promises what it cannot do.
 
 ## Layout
 
@@ -55,19 +60,26 @@ claude plugin install shared-tree-guards@shared-tree-guards
   the working tree.
 - **No `.koncept/` here.** Deliberate: koncepto is workspace governance and a public repo should
   not ask contributors to learn a system that is not theirs. The invariants are the tests.
-- **English in this repo**, including comments — it is public. (The specs it came from are in
-  Catalan; that is fine, they are attached as provenance.)
+- **English everywhere in this repo**, including comments, commit messages, test fixture strings
+  and the cases file. It is public. The original specs were written in Catalan in a private
+  workspace; `SPEC.md` here is the English one and is the canonical contract from now on. The
+  Catalan design document is deliberately NOT shipped: it is full of references to one private
+  workspace and would be noise to anyone else. `DOCTRINE.md` carries the decisions that matter.
 
 ## Decided NOT to do
 
 - **`worktree-guard` does not travel here.** It encodes a Tier model specific to one workspace
   (15 references to it, plus junction logic pointing at Google Drive). Measured, not assumed.
 - **Making a shared tree safe.** These guards reduce damage. The industry answer is one worktree
-  per agent; this is for people who cannot.
+  per session; this is for people who cannot.
 - **Publishing to Anthropic's official marketplace.** Own repo first.
 
 ## The known limit, which belongs in the README and not in a comment
 
-The co-tenancy gate only sees sessions that **register**. If you share a tree with something that
-does not — a script, a cron, another agent — the plugin sees `solo` and stays quiet exactly when
-it should speak.
+The co-tenancy gate only sees sessions that **register**, i.e. Claude Code sessions with this
+plugin loaded. A script, a cron, another agent CLI, an editor plugin that commits on a timer, or
+a Claude Code session that was already open before the plugin was installed: for all of those the
+plugin reports `solo` and stays quiet exactly when it should speak.
+
+If that ever needs to change, the shape is a public `register` command any process could call,
+not loosening the gate. Nobody has asked for it, and it adds public surface to maintain.

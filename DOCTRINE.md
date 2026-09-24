@@ -165,3 +165,23 @@ the timing arm did not, and a timing arm is exactly the kind of thing someone ru
 `cost.mjs` now proves the guard still blocks in `shared` and still stays silent in `solo` before
 printing a single number, and that check was verified by breaking the guard on purpose and
 watching it refuse. Same shape as D-04 and D-09: **the measurement has to be able to fail.**
+
+## D-13 · The scope is Claude Code sessions, and it is load-bearing
+
+Not "agents", not "other tools", not "concurrent processes". A co-tenant exists in this system
+only because a `SessionStart` hook wrote an entry, so the only thing this can ever detect is **a
+Claude Code session with this plugin loaded**.
+
+Everything else that can write to the same working tree is invisible to it: another agent CLI, a
+script, a cron, an editor plugin that commits on a timer, a teammate on a network share, and a
+Claude Code session that was already open when the plugin was installed (plugins load at session
+start).
+
+Two consequences, and both are decisions rather than gaps:
+
+1. **The wording everywhere says "Claude Code session".** Describing this as guarding a shared
+   tree against "agents" would promise what it cannot do, and the failure would be silent: the
+   plugin says `solo` and the user reads that as "nobody else is here".
+2. **If that ever has to change, the shape is a public `register` command** any process could
+   call, not a looser gate. The gate is what makes the plugin publishable (D-02); loosening it
+   would trade a real guarantee for an imaginary one.
