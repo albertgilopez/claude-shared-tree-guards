@@ -44,7 +44,7 @@ const MUTATIONS = [
   {
     name: 'commit-guard cannot block at all',
     file: 'hooks-handlers/commit-guard.cjs',
-    from: 'const verdict = evaluate(cmd, root);',
+    from: 'const verdict = evaluate(cmd, root, fs, null, co);',
     to: 'const verdict = null;',
     breaks: 'the gate itself',
     mustFail: ['AC-01', 'AC-02', 'AC-06', 'AC-15'],
@@ -80,6 +80,22 @@ const MUTATIONS = [
     to: '    // gate removed',
     breaks: 'the silence that makes this publishable',
     mustFail: ['AC-19'],
+  },
+  {
+    name: 'subagent calls are not recognised as co-tenancy',
+    file: 'lib/sessions.cjs',
+    from: '  if (payload.agent_id) {',
+    to: '  if (false && payload.agent_id) {',
+    breaks: 'D-14: a subagent shares its session index and no registry can see it',
+    mustFail: ['AC-21', 'AC-23'],
+  },
+  {
+    name: 'the main session forgets its own subagent acted',
+    file: 'lib/sessions.cjs',
+    from: '  const lastSub = mine && Date.parse(mine.lastSubagentAt || 0);',
+    to: '  const lastSub = 0;',
+    breaks: 'the other direction of D-14: the session sweeping up its subagent work',
+    mustFail: ['AC-22'],
   },
   {
     name: 'liveness says every registered session is alive',

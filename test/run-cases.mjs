@@ -146,6 +146,7 @@ function plantSessions(repo, n, opts = {}) {
         transcript: null,
         cwd: repo,
         toplevel: opts.otherToplevel && id !== SELF_ID ? opts.otherToplevel : repo,
+        ...(opts.recentSubagent && id === SELF_ID ? { lastSubagentAt: new Date().toISOString() } : {}),
         startedAt: new Date(Date.now() - 3600_000).toISOString(),
         touchedAt: new Date().toISOString(),
         host: os.hostname(),
@@ -177,6 +178,8 @@ function runHandler(guard, repo, input, env, runFrom) {
     hook_event_name: 'PreToolUse',
     tool_name: 'Bash',
     tool_input: { command: input.command },
+    // A Bash call made by a subagent carries these; a main-session call does not. Measured.
+    ...(input.agent_id ? { agent_id: input.agent_id, agent_type: input.agent_type || 'general-purpose' } : {}),
   };
   const r = spawnSync(process.execPath, [file], {
     cwd: runFrom || repo,
@@ -230,7 +233,7 @@ for (const c of cases) {
 
     // Co-tenancy fixture. Default: one other live session, so the guards are ON.
     if (spec.git !== false) {
-      if (spec.live_sessions !== undefined) plantSessions(repo, spec.live_sessions, { includeSelf: true, otherToplevel: fs.realpathSync(repo) });
+      if (spec.live_sessions !== undefined) plantSessions(repo, spec.live_sessions, { includeSelf: true, otherToplevel: fs.realpathSync(repo), recentSubagent: spec.recent_subagent });
       else if (spec.dead_sessions !== undefined) plantSessions(repo, spec.dead_sessions, { dead: true });
       else plantSessions(repo, 1);
     }

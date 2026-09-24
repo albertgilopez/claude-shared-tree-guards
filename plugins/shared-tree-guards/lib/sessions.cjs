@@ -42,6 +42,8 @@ const path = require('path');
 const { gitCommonDir, topLevel, canonical } = require('./git.cjs');
 
 const DIR_NAME = 'claude-sessions';
+/** How long after a subagent was last seen the session still counts as sharing its index. */
+const SUBAGENT_WINDOW_MINUTES = Number(process.env.SHARED_TREE_GUARDS_SUBAGENT_MINUTES || 30);
 const IDLE_MINUTES = Number(process.env.SHARED_TREE_GUARDS_IDLE_MINUTES || 180);
 
 /** The registry directory for this repo, or null when we are not in a usable repo. */
@@ -58,6 +60,29 @@ function pidAlive(pid) {
     return true;
   } catch (e) {
     return e && e.code === 'EPERM';
+  }
+}
+
+/**
+ * Note that a SUBAGENT of this session has just acted, so that the session's own later commands
+ * are guarded too. Cheap: one small write the first time a subagent appears, not on every call.
+ * Returns true if it wrote.
+ */
+function noteSubagent(payload = {}, now = Date.now()) {
+  const me = identify(payload);
+  if (!me.id) return false;
+  const dir = registryDir(me.cwd);
+  if (!dir) return false;
+  const file = path.join(dir, safeName(me.id) + '.json');
+  try {
+    const entry = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const last = Date.parse(entry.lastSubagentAt || 0) || 0;
+    if (now - last < 60_000) return false;         // already noted a moment ago
+    entry.lastSubagentAt = new Date(now).toISOString();
+    fs.writeFileSync(file, JSON.stringify(entry) + '\n');
+    return true;
+  } catch {
+    return false;   // no entry of our own (plugin installed mid-session): nothing to note
   }
 }
 
@@ -189,6 +214,28 @@ function list(cwd, now = Date.now()) {
  */
 function state(payload = {}, now = Date.now(), { scope = 'clone' } = {}) {
   const me = identify(payload);
+
+  // ── Subagents share this session's index, and no registry can see them ────────────────────
+  // Measured 2026-09-24: a Bash call made by a subagent DOES reach PreToolUse, and its payload
+  // carries `agent_id` / `agent_type`, which a main-session call does not. It carries the same
+  // session_id and the same CLAUDE_PID, so the registry cannot tell them apart — but it does not
+  // need to. If this call comes from a subagent, then by construction there are at least two
+  // actors on this one index (this subagent, and the session that spawned it, and possibly
+  // sibling subagents running in parallel), and none of them can see what the others staged.
+  //
+  // That is co-tenancy DEMONSTRATED BY THE PAYLOAD ITSELF. No registry lookup, no write, no
+  // guessing — which makes it the strongest signal in this file, not a weaker one.
+  if (payload.agent_id) {
+    return {
+      state: 'shared',
+      others: [],
+      self: me,
+      scope,
+      reason: 'subagent',
+      detail: `this command comes from a subagent (${payload.agent_type || 'unknown type'}) that shares the session's index`,
+    };
+  }
+
   const live = list(me.cwd, now);
   if (live === null) return { state: 'unknown', others: [] };
   // Dedupe by pid as well as by id. One PROCESS is one session: if SessionStart fires again
@@ -201,10 +248,23 @@ function state(payload = {}, now = Date.now(), { scope = 'clone' } = {}) {
     // dropping a real co-tenant. Fail towards "still visible", not towards a false solo.
     others = others.filter((e) => !e.toplevel || !me.toplevel || canonical(e.toplevel) === me.toplevel);
   }
-  return { state: others.length > 0 ? 'shared' : 'solo', others, self: me, scope };
+  if (others.length > 0) return { state: 'shared', others, self: me, scope, reason: 'other-session' };
+
+  // The other half of the subagent case: this is the MAIN session speaking, but one of its own
+  // subagents acted recently, so whatever it staged is in this same index and invisible here.
+  const mine = live.find((e) => e.id === me.id);
+  const lastSub = mine && Date.parse(mine.lastSubagentAt || 0);
+  if (lastSub && now - lastSub <= SUBAGENT_WINDOW_MINUTES * 60 * 1000) {
+    return {
+      state: 'shared', others: [], self: me, scope, reason: 'own-subagent',
+      detail: 'a subagent of this session acted recently and shares this index',
+    };
+  }
+
+  return { state: 'solo', others, self: me, scope, reason: 'alone' };
 }
 
 module.exports = {
-  register, unregister, list, state, identify, pidAlive,
-  registryDir, DIR_NAME, IDLE_MINUTES,
+  register, unregister, list, state, identify, pidAlive, noteSubagent,
+  registryDir, DIR_NAME, IDLE_MINUTES, SUBAGENT_WINDOW_MINUTES,
 };

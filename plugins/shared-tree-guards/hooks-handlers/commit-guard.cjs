@@ -93,7 +93,7 @@ const covered = (p, roots) => roots.some((r) => r === '.' || p === r || p.starts
  * any failure fell through to fail-open and the tests passed for the wrong reason (3 of 6
  * did, measured). A bench that cannot fail proves nothing.
  */
-function evaluate(cmd, root, io = fs, readStaged = null) {
+function evaluate(cmd, root, io = fs, readStaged = null, co = {}) {
   const segs = segments(cmd);
   const commits = segs.filter(isCommit);
   if (!commits.length) return null;
@@ -138,13 +138,19 @@ function evaluate(cmd, root, io = fs, readStaged = null) {
   const extra = rows.map((r) => r.p).filter((p) => !covered(p, roots));
   if (!extra.length) return null;
 
+  const WHO =
+    co.reason === 'subagent'
+      ? 'This command comes from a SUBAGENT, which shares this session index'
+      : co.reason === 'own-subagent'
+        ? 'A SUBAGENT of this session acted recently and shares this index'
+        : 'Another Claude Code session is working in this same clone';
   const judged = commits.map((c) => c.replace(/\s+/g, ' ').slice(0, 160)).join(' | ');
   return {
     kind: 'foreign-index',
     paths: extra,
     msg: [
       `BLOCKED: \`git commit\` without \`-- <paths>\` would carry ${extra.length} file(s) this command did not stage.`,
-      `  Another session is working in this same clone and git has ONE index: this may be their work.`,
+      `  ${WHO}, and git has ONE index: this may be their work.`,
       `  ${extra.slice(0, 8).join(', ')}${extra.length > 8 ? ` (+${extra.length - 8} more)` : ''}`,
       `  -> Repeat with a pathspec:  git commit -m "..." -- <your paths>`,
       `     (or \`git reset -q\` and stage only yours).  Escape: SHARED_TREE_GUARDS_OFF=1`,
@@ -172,8 +178,11 @@ if (require.main === module) {
     // this clone cannot have staged anything into the index we are about to commit.
     const co = sessions.state({ ...payload, cwd }, Date.now(), { scope: 'tree' });
     if (co.state !== 'shared') process.exit(0);
+    // Remember that a subagent acted, so this session's OWN later commands are guarded too:
+    // whatever the subagent staged is in this same index and invisible from the main session.
+    if (co.reason === 'subagent') sessions.noteSubagent({ ...payload, cwd });
 
-    const verdict = evaluate(cmd, root);
+    const verdict = evaluate(cmd, root, fs, null, co);
     if (!verdict) process.exit(0);
     if (warnOnly()) warn(verdict.msg);   // see lib/payload.cjs: stderr alone never reaches the model
     block(verdict.msg);

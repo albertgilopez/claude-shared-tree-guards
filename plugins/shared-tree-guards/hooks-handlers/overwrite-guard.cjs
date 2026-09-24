@@ -91,7 +91,7 @@ function analyze(cmd, cwd) {
   return { hit, root, paths, at_risk };
 }
 
-function buildReason({ hit, root, paths, at_risk }) {
+function buildReason({ hit, root, paths, at_risk }, co = {}) {
   const shown = at_risk.slice(0, MAX_LISTED);
   const rest = at_risk.length - shown.length;
   const scope = paths.length ? paths.join(' ') : '(the whole repo)';
@@ -114,8 +114,12 @@ function buildReason({ hit, root, paths, at_risk }) {
     ``,
     recoverable,
     ``,
-    `Another Claude Code session is live in this same working tree, so these changes may be`,
-    `theirs and still in progress. Ways out:`,
+    co.reason === 'subagent'
+      ? `This command comes from a SUBAGENT, which shares the session's working tree. These changes`
+      : co.reason === 'own-subagent'
+        ? `A SUBAGENT of this session acted recently and shares this working tree. These changes`
+        : `Another Claude Code session is live in this same working tree, so these changes`,
+    `may be theirs and still in progress. Ways out:`,
     `  1. Commit what is there (with explicit paths) and repeat the command.`,
     `  2. \`git stash push -m "<why>" -- <paths>\` if it is not yours and you do not want to lose it.`,
     `  3. Narrow the pathspec so it does not touch the dirty files.`,
@@ -139,11 +143,14 @@ if (require.main === module) {
     // cannot be the owner of what this command would overwrite here.
     const co = sessions.state({ ...payload, cwd }, Date.now(), { scope: 'tree' });
     if (co.state !== 'shared') process.exit(0);
+    // Remember that a subagent acted, so this session's OWN later commands are guarded too:
+    // whatever the subagent staged is in this same index and invisible from the main session.
+    if (co.reason === 'subagent') sessions.noteSubagent({ ...payload, cwd });
 
     const res = analyze(cmd, cwd);
     if (!res) process.exit(0);
 
-    const reason = buildReason(res);
+    const reason = buildReason(res, co);
     if (warnOnly()) warn(reason);
     block(reason);
   });
