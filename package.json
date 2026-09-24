@@ -1,6 +1,6 @@
 {
   "name": "claude-shared-tree-guards",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Claude Code plugin: guards for git working trees shared by more than one agent session",
   "license": "MIT",
