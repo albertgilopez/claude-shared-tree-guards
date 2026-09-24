@@ -1,7 +1,7 @@
 {
-  "written_at": "2026-09-24T13:55:00+02:00",
+  "written_at": "2026-09-24T15:45:00+02:00",
   "at_commit": "aecde3736b576f7b908dcb75d11dacfce24bbaf8",
-  "where_we_are": "T1-T4 done and green on Windows, end to end. The plugin is installed at user scope on HP, and a real `claude -p` session in a shared repo is blocked by it: the model quoted the BLOCKED message and no commit was created (test/e2e-real-session.mjs). 17/18 acceptance cases pass, 3 skip (they need overwrite-guard, T5); 12 library tests. The bench was proven able to fail: mutating the guard to never block takes it from 16 pass/0 fail to 12 pass/4 fail.",
+  "where_we_are": "PUBLIC and green everywhere. github.com/albertgilopez/claude-shared-tree-guards, MIT. CI: 4/4 jobs (ubuntu-latest and windows-latest x node 20,22), each reporting 17 pass / 0 fail / 3 skip -- read from the run logs, not just the green tick. Installed on HP FROM GITHUB (not from a local path) and verified there: a real `claude -p` in a shared repo gets BLOCKED and creates no commit. T1-T4 plus T9/T10 done; T5-T8 and T11-T14 open.",
   "next": [
     "T5 — port overwrite-guard (AC-08, AC-09) on exit 2 + stderr; it must use tree scope too",
     "T6 — negative-control suite: one mutation per guard, permanent (three were done by hand today: the gate, the WARN channel, the bench itself)",
@@ -10,8 +10,7 @@
   ],
   "blocked": [],
   "waiting_on_albert": [
-    "T9 — read the README before it goes public",
-    "T10 — create the public repo albertgilopez/claude-shared-tree-guards (an outward-facing action under his name)"
+    "T12 — the follow-up comment on anthropics/claude-code#90943 is drafted, not posted (a public action under his name)"
   ],
   "measured": {
     "date": "2026-09-24",
@@ -21,9 +20,10 @@
     "lib_tests": "12 pass / 0 fail",
     "real_session": "claude -p blocked; the model quoted BLOCKED; 0 new commits (re-run on the tree-scope code, with the fixture carrying toplevel so it exercises the production path)",
     "negative_control": "guard mutated to never block -> 12 pass / 4 fail",
-    "linux_ci": "not run yet — the CI workflow exists but nothing has been pushed",
+    "linux_ci": "GREEN. 4/4 matrix jobs, 17 pass / 0 fail / 3 skip on each, verified in the run logs",
     "warn_mode": "WARN=1 measured with a falsifiable control: stderr-only -> the model sees nothing (FAIL); hookSpecificOutput.additionalContext -> the model sees it (ok). D-09",
-    "transcript_mtime": "tracks activity in real time (2 s old while the session was running), so the liveness AND in D-02 is measured, not guessed"
+    "transcript_mtime": "tracks activity in real time (2 s old while the session was running), so the liveness AND in D-02 is measured, not guessed",
+    "install_from_github": "claude plugin marketplace add albertgilopez/claude-shared-tree-guards + install -> real claude -p session blocked (test/e2e-real-session.mjs)"
   },
   "not_doing_and_why": {
     "koncepto": "no .koncept/ in this repo — a public repo should not ask contributors to learn workspace governance that is not theirs; the invariants are the tests",
@@ -31,6 +31,6 @@
     "KB migration": "the KB keeps its own hand-registered hooks until this plugin has flown green for a while (T13); duplicating is safer than migrating today"
   },
   "known_risks": [
-    "First CI run on windows-latest: TEMP is an 8.3 path there and git returns the long form. git.canonical() was added for exactly this, but it has only been measured on HP — treat a red windows-latest as this, first."
+    "The 8.3-path risk on windows-latest that git.canonical() was written for did NOT materialise: both windows jobs are green. Keep canonical() anyway — it is why."
   ]
 }

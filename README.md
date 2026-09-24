@@ -52,10 +52,12 @@ short-lived child process whose own pid is dead before the next hook runs, so re
 `process.pid` would have produced a plugin that installs, tests green and does nothing.
 See `DOCTRINE.md` D-01 for the measurement.
 
+[![ci](https://github.com/albertgilopez/claude-shared-tree-guards/actions/workflows/ci.yml/badge.svg)](https://github.com/albertgilopez/claude-shared-tree-guards/actions/workflows/ci.yml)
+
 ## Status
 
-Early. `commit-guard` and `cotenancy` are implemented and green locally on Windows
-(18 acceptance cases, 12 library tests, and a real `claude -p` session that gets blocked -- in both block and warn modes); Linux is CI-pending. `overwrite-guard`, the cost
+Early. `commit-guard` and `cotenancy` are implemented and green on Linux and Windows
+(18 acceptance cases, 12 library tests, and a real `claude -p` session that gets blocked -- in both block and warn modes);  `overwrite-guard`, the cost
 measurement and the formal negative-control suite are next. `SPEC.md` and `cases.yaml` are the
 contract: every acceptance criterion cites a case id, and the cases run against the real handlers
 in real temporary repositories — no mocks of git.
