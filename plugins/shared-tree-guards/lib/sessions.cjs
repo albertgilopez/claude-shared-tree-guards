@@ -33,7 +33,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { gitCommonDir, topLevel } = require('./git.cjs');
+const { gitCommonDir, topLevel, canonical } = require('./git.cjs');
 
 const DIR_NAME = 'claude-sessions';
 const IDLE_MINUTES = Number(process.env.SHARED_TREE_GUARDS_IDLE_MINUTES || 180);
@@ -193,7 +193,7 @@ function state(payload = {}, now = Date.now(), { scope = 'clone' } = {}) {
   if (scope === 'tree') {
     // An entry written before `toplevel` existed has none: keep it rather than silently
     // dropping a real co-tenant. Fail towards "still visible", not towards a false solo.
-    others = others.filter((e) => !e.toplevel || !me.toplevel || e.toplevel === me.toplevel);
+    others = others.filter((e) => !e.toplevel || !me.toplevel || canonical(e.toplevel) === me.toplevel);
   }
   return { state: others.length > 0 ? 'shared' : 'solo', others, self: me, scope };
 }

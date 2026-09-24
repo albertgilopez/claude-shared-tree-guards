@@ -28,7 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, topLevel } = require('../lib/git.cjs');
 const sessions = require('../lib/sessions.cjs');
-const { readPayload, command, effectiveCwd, block, disabled, warnOnly } = require('../lib/payload.cjs');
+const { readPayload, command, effectiveCwd, block, disabled, warnOnly, warn } = require('../lib/payload.cjs');
 
 // ── reading the command ──────────────────────────────────────────────────────────────────
 // Split on shell separators, because `git add X && git commit -m "..."` is ONE tool call.
@@ -175,7 +175,7 @@ if (require.main === module) {
 
     const verdict = evaluate(cmd, root);
     if (!verdict) process.exit(0);
-    if (warnOnly()) { process.stderr.write(verdict.msg + '\n'); process.exit(0); }
+    if (warnOnly()) warn(verdict.msg);   // see lib/payload.cjs: stderr alone never reaches the model
     block(verdict.msg);
   });
 }

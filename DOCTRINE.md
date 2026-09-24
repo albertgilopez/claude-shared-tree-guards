@@ -103,3 +103,32 @@ first an MSYS shell pid (not a Windows pid) made the planted session look dead �
 silence, which is the gate working correctly; then `shell: true` on Windows mangled the argv
 and the model received the single word `"In"`. **A test that silently asks the wrong question
 is worse than no test.** ASCII prompt, no shell.
+
+## D-09 · Exit 0 + stderr does not reach the model. `additionalContext` does.
+
+`SHARED_TREE_GUARDS_WARN=1` was documented in the README and, as first written, **did nothing**:
+a PreToolUse hook that writes to stderr and exits 0 puts the text in the transcript, not in front
+of the model. Measured with a real `claude -p`: the commit went through and the model never
+mentioned a warning. A documented mode that does nothing is D-01 again, one layer up.
+
+The channel that works on a non-blocking PreToolUse is
+`hookSpecificOutput.additionalContext` on stdout, which is what `payload.warn()` now sends.
+
+**And the first version of that measurement was itself a lie in green.** The assertion read
+`r.stdout + r.stderr`, and Claude Code echoes hook stderr to its own stderr — so the check passed
+*with the warning wired to stderr only*. A control that cannot fail proves nothing (D-04 again).
+Two changes made it falsifiable: assert on **the model's answer (`r.stdout`) alone**, and ask the
+model to emit the token `NO-HOOK-MESSAGE` when nothing reached it. Both arms were then run:
+
+```
+stderr only          -> FAIL  WARN: the model saw the warning
+additionalContext    -> ok    WARN: the model saw the warning
+```
+
+## D-10 · Compare paths through one canonicalizer, never with `===`
+
+`toplevel` is obtained by two routes — `git rev-parse` in production, `mkdtemp` in the fixtures.
+On Windows the same directory has two spellings (`C:\Users\RUNNER~1\…` 8.3 vs the long form, plus
+case), so a naive `===` would filter out every real co-tenant on a GitHub runner and take the
+whole bench green for the wrong reason. `git.canonical()` (`realpathSync.native` + lowercase on
+win32) is the single spelling everything compares through.

@@ -1,10 +1,10 @@
 {
-  "written_at": "2026-09-24T13:20:00+02:00",
+  "written_at": "2026-09-24T13:55:00+02:00",
   "at_commit": "9abe995ad5251b82ed44c7abac191745b42f8b97",
   "where_we_are": "T1-T4 done and green on Windows, end to end. The plugin is installed at user scope on HP, and a real `claude -p` session in a shared repo is blocked by it: the model quoted the BLOCKED message and no commit was created (test/e2e-real-session.mjs). 17/18 acceptance cases pass, 3 skip (they need overwrite-guard, T5); 12 library tests. The bench was proven able to fail: mutating the guard to never block takes it from 16 pass/0 fail to 12 pass/4 fail.",
   "next": [
     "T5 — port overwrite-guard (AC-08, AC-09) on exit 2 + stderr; it must use tree scope too",
-    "T6 — negative-control suite: one mutation per guard, permanent (today it was done by hand, once)",
+    "T6 — negative-control suite: one mutation per guard, permanent (three were done by hand today: the gate, the WARN channel, the bench itself)",
     "T7 — DR-8 as a test: `git status --porcelain` unchanged after every guard",
     "T8 — measure the per-call cost with solo and with shared, publish the number"
   ],
@@ -19,13 +19,18 @@
     "worktree_scope": "linked worktrees share --git-common-dir but have separate indexes (.git/worktrees/<n>/index) — guards use tree scope, the banner uses clone scope (D-07)",
     "cases": "17 pass / 0 fail / 3 skip",
     "lib_tests": "12 pass / 0 fail",
-    "real_session": "claude -p blocked; model quoted BLOCKED; 0 new commits",
+    "real_session": "claude -p blocked; the model quoted BLOCKED; 0 new commits (re-run on the tree-scope code, with the fixture carrying toplevel so it exercises the production path)",
     "negative_control": "guard mutated to never block -> 12 pass / 4 fail",
-    "linux_ci": "not run yet — the CI workflow exists but nothing has been pushed"
+    "linux_ci": "not run yet — the CI workflow exists but nothing has been pushed",
+    "warn_mode": "WARN=1 measured with a falsifiable control: stderr-only -> the model sees nothing (FAIL); hookSpecificOutput.additionalContext -> the model sees it (ok). D-09",
+    "transcript_mtime": "tracks activity in real time (2 s old while the session was running), so the liveness AND in D-02 is measured, not guessed"
   },
   "not_doing_and_why": {
     "koncepto": "no .koncept/ in this repo — a public repo should not ask contributors to learn workspace governance that is not theirs; the invariants are the tests",
     "worktree-guard": "does not travel: it encodes one workspace's Tier model and junction layout",
     "KB migration": "the KB keeps its own hand-registered hooks until this plugin has flown green for a while (T13); duplicating is safer than migrating today"
-  }
+  },
+  "known_risks": [
+    "First CI run on windows-latest: TEMP is an 8.3 path there and git returns the long form. git.canonical() was added for exactly this, but it has only been measured on HP — treat a red windows-latest as this, first."
+  ]
 }

@@ -35,7 +35,7 @@ fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(
   path.join(dir, 'other.json'),
   JSON.stringify({
-    id: 'other', pid: other.pid, transcript: null, cwd: repo,
+    id: 'other', pid: other.pid, transcript: null, cwd: repo, toplevel: repo,
     startedAt: new Date(Date.now() - 3 * 3600_000).toISOString(),
     touchedAt: new Date().toISOString(), host: os.hostname(),
   }) + '\n'

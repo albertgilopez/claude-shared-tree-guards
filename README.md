@@ -21,7 +21,7 @@ Two escape hatches, both honoured as an env var and as a literal prefix in the c
 
 ```bash
 SHARED_TREE_GUARDS_OFF=1 git commit -m "..."    # off entirely
-SHARED_TREE_GUARDS_WARN=1                       # warn instead of block
+SHARED_TREE_GUARDS_WARN=1 git commit -m "..."  # warn instead of block
 ```
 
 **The limit, up front:** the gate only sees sessions that *register*. Share a tree with something
@@ -55,7 +55,7 @@ See `DOCTRINE.md` D-01 for the measurement.
 ## Status
 
 Early. `commit-guard` and `cotenancy` are implemented and green locally on Windows
-(18 acceptance cases, 12 library tests, and a real `claude -p` session that gets blocked); Linux is CI-pending. `overwrite-guard`, the cost
+(18 acceptance cases, 12 library tests, and a real `claude -p` session that gets blocked -- in both block and warn modes); Linux is CI-pending. `overwrite-guard`, the cost
 measurement and the formal negative-control suite are next. `SPEC.md` and `cases.yaml` are the
 contract: every acceptance criterion cites a case id, and the cases run against the real handlers
 in real temporary repositories — no mocks of git.

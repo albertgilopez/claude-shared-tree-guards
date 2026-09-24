@@ -62,4 +62,26 @@ function disabled(cmd) {
 
 const warnOnly = () => process.env.SHARED_TREE_GUARDS_WARN === '1';
 
-module.exports = { readPayload, command, effectiveCwd, block, disabled, warnOnly };
+/**
+ * Warn without blocking (SHARED_TREE_GUARDS_WARN=1).
+ *
+ * MEASURED 2026-09-24, and it is the reason this function exists at all: writing to stderr and
+ * exiting 0 from a PreToolUse hook puts the text in the transcript and **the model never sees
+ * it** — a real `claude -p` run with WARN=1 made the dangerous commit and said nothing about a
+ * warning. A documented mode that does nothing is the exact failure D-01 is about. The channel
+ * that does reach the model on a non-blocking PreToolUse is `hookSpecificOutput.additionalContext`
+ * on stdout, so that is what this sends (stderr too, for a human tailing the terminal).
+ */
+function warn(msg) {
+  const text = String(msg).replace(/\s*$/, '');
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: text },
+      systemMessage: text,
+    })
+  );
+  process.stderr.write(text + '\n');
+  process.exit(0);
+}
+
+module.exports = { readPayload, command, effectiveCwd, block, disabled, warnOnly, warn };

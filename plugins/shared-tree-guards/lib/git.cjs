@@ -7,6 +7,7 @@
  */
 const { execFileSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const TIMEOUT_MS = Number(process.env.SHARED_TREE_GUARDS_TIMEOUT_MS || 20000);
 
@@ -25,10 +26,25 @@ function git(args, cwd) {
   }
 }
 
-/** Absolute path of the repo's working tree root, or null. */
+/**
+ * One canonical spelling for a path, so two paths obtained by different routes can be compared.
+ * On Windows the same directory can be spelled `C:\Users\RUNNER~1\...` (8.3, which is what
+ * TEMP gives you on a GitHub runner) and `C:\Users\runneradmin\...` (which is what git
+ * returns), and a naive === would say they are different trees. Case is folded there too.
+ */
+function canonical(p) {
+  if (!p) return null;
+  let out = path.resolve(p);
+  try {
+    out = fs.realpathSync.native ? fs.realpathSync.native(out) : fs.realpathSync(out);
+  } catch { /* the path may be gone; the resolved form is still better than nothing */ }
+  return process.platform === 'win32' ? out.toLowerCase() : out;
+}
+
+/** Absolute, canonical path of the repo's working tree root, or null. */
 function topLevel(cwd) {
   const out = git(['rev-parse', '--show-toplevel'], cwd);
-  return out ? path.resolve(out) : null;
+  return out ? canonical(out) : null;
 }
 
 /**
@@ -45,4 +61,4 @@ function gitCommonDir(cwd) {
   return path.isAbsolute(out) ? path.resolve(out) : path.resolve(cwd, out);
 }
 
-module.exports = { git, topLevel, gitCommonDir, TIMEOUT_MS };
+module.exports = { git, topLevel, gitCommonDir, canonical, TIMEOUT_MS };
