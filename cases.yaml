@@ -1,0 +1,109 @@
+# cases.yaml — casos executables de shared-tree-guards.
+# Cada AC-NN del SPEC cita un id d'aqui. El runner munta un repo git temporal per cas.
+
+- id: AC-01
+  guard: commit-guard
+  repo: { staged: [a.md, b.md] }
+  input: { command: 'git add a.md && git commit -m "x"' }
+  expected: { exit: 2, mentions: [b.md] }
+
+- id: AC-02
+  guard: commit-guard
+  repo: { staged: [a.md, b.md] }
+  input: { command: 'git add a.md && git commit -m "text -- amb guions"' }
+  expected: { exit: 2, mentions: [b.md] }
+
+- id: AC-03
+  guard: commit-guard
+  repo: { staged: [a.md, b.md] }
+  input: { command: 'git commit -m "text -- guions" -- a.md' }
+  expected: { exit: 0 }
+
+- id: AC-04
+  guard: commit-guard
+  repo: { staged: [a.md, b.md] }
+  input: { command: 'git add a.md b.md && git commit -m "x"' }
+  expected: { exit: 0 }
+
+- id: AC-05
+  guard: commit-guard
+  repo: { staged: [] }
+  input: { command: 'git commit -m "x"' }
+  expected: { exit: 0 }
+
+- id: AC-06
+  guard: commit-guard
+  repo: { staged_deletions_of_present_files: [z.md] }
+  input: { command: 'git commit -m "x"' }
+  expected: { exit: 2, mentions: [z.md] }
+
+- id: AC-07
+  guard: commit-guard
+  repo: { staged_deletions_of_absent_files: [z.md] }
+  input: { command: 'git add z.md && git commit -m "x"' }
+  expected: { exit: 0 }
+
+- id: AC-08
+  guard: overwrite-guard
+  repo: { modified_uncommitted: [a.md] }
+  input: { command: 'git checkout origin/main -- a.md' }
+  expected: { exit: 2, mentions: [a.md] }
+
+- id: AC-09
+  guard: overwrite-guard
+  repo: { clean: [a.md] }
+  input: { command: 'git checkout origin/main -- a.md' }
+  expected: { exit: 0 }
+
+- id: AC-10
+  guard: cotenancy
+  repo: { live_sessions: 2 }
+  input: { mode: list }
+  expected: { state: shared, others: 1 }
+
+- id: AC-11
+  guard: cotenancy
+  repo: { dead_sessions: 1 }
+  input: { mode: list }
+  expected: { state: solo, others: 0 }
+
+- id: AC-12
+  guard: all
+  repo: { git: false }
+  input: { command: 'git commit -m "x"' }
+  expected: { exit: 0, stdout: '', stderr: '' }
+
+- id: AC-13
+  guard: commit-guard
+  repo: { staged: [a.md, b.md] }
+  env: { SHARED_TREE_GUARDS_OFF: '1' }
+  input: { command: 'git add a.md && git commit -m "x"' }
+  expected: { exit: 0 }
+
+- id: AC-14
+  guard: commit-guard
+  repo: { staged: [a.md, b.md], git_on_path: false }
+  input: { command: 'git add a.md && git commit -m "x"' }
+  expected: { exit: 0 }
+
+- id: AC-15
+  guard: commit-guard
+  repo: { staged: [a.md, b.md] }
+  input: { command: 'git add a.md && git commit -m "titol"' }
+  expected: { exit: 2, stderr_contains: 'git commit -m "titol"' }
+
+# Afegits 24/09/2026 en implementar T1-T4: el gate de co-tenancy era la peca que fa el
+# plugin publicable i NO tenia cap cas que l'afirmes sobre una comanda real (nomes AC-10/11
+# sobre el --list). Un invariant sense cas es prosa.
+
+- id: AC-16
+  guard: commit-guard
+  repo: { staged: [a.md, b.md], live_sessions: 0 }
+  input: { command: 'git add a.md && git commit -m "x"' }
+  expected: { exit: 0, stderr: '' }
+
+- id: AC-17
+  guard: commit-guard
+  repo: { staged_deletions_of_present_files: [z.md] }
+  input: { command: 'git rm --cached z.md && git commit -m "x"' }
+  expected: { exit: 0 }

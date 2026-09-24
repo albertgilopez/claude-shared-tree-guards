@@ -1,0 +1,36 @@
+name: ci
+
+# Windows from the first commit, not at the end: the traps in this code are quoting, PATH
+# and process semantics, and all three are Windows traps.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: install
+        run: npm install --no-audit --no-fund
+
+      - name: validate the plugin and marketplace manifests
+        run: node -e "['.claude-plugin/marketplace.json','plugins/shared-tree-guards/.claude-plugin/plugin.json','plugins/shared-tree-guards/hooks/hooks.json'].forEach(p=>{JSON.parse(require('fs').readFileSync(p,'utf8'));console.log('ok',p)})"
+
+      - name: library contract (fail-open)
+        run: node --test test/lib.test.mjs
+
+      - name: acceptance cases against the real handlers
+        run: node test/run-cases.mjs

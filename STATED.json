@@ -1,0 +1,29 @@
+{
+  "written_at": "2026-09-24T12:55:00+02:00",
+  "at_commit": "PENDING-FIRST-COMMIT",
+  "where_we_are": "T1-T4 done and green on Windows. The repo is installable (validated + installed locally from a path marketplace) and the commit-guard blocks for real behind the co-tenancy gate. 16/17 acceptance cases pass, 3 skip (they need overwrite-guard, T5). The bench was proven able to fail: mutating the guard to never block takes it from 16 pass/0 fail to 12 pass/4 fail.",
+  "next": [
+    "T5 — port overwrite-guard (AC-08, AC-09); unifies on exit 2 + stderr, drops the permissionDecision JSON protocol the KB version used",
+    "T6 — negative-control suite: one mutation per guard that the bench must catch (today this was done by hand, once)",
+    "T7 — DR-8: prove `git status --porcelain` is unchanged after running every guard",
+    "T8 — measure the per-call cost with solo and with shared, and publish the number in the README"
+  ],
+  "blocked": [],
+  "waiting_on_albert": [
+    "T9 — read the README before it goes public",
+    "T10 — create the public repo albertgilopez/claude-shared-tree-guards (an outward-facing action under his name)"
+  ],
+  "measured": {
+    "date": "2026-09-24",
+    "session_identity": "(session_id, CLAUDE_PID) — probe-measured across SessionStart/PreToolUse/SessionEnd; process.pid and process.ppid are ephemeral and unusable",
+    "cases": "16 pass / 0 fail / 3 skip",
+    "lib_tests": "9 pass / 0 fail",
+    "negative_control": "guard mutated to never block -> 12 pass / 4 fail",
+    "linux_ci": "not run yet — the CI workflow exists but nothing has been pushed"
+  },
+  "not_doing_and_why": {
+    "koncepto": "no .koncept/ in this repo — a public repo should not ask contributors to learn workspace governance that is not theirs; the invariants are the tests",
+    "worktree-guard": "does not travel: it encodes one workspace's Tier model and junction layout",
+    "KB migration": "the KB keeps its own hand-registered hooks until this plugin has flown green for a while (T13); duplicating is safer than migrating today"
+  }
+}

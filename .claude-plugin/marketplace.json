@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "shared-tree-guards",
+  "version": "0.1.0",
+  "description": "Guards for git working trees shared by more than one agent session",
+  "owner": {
+    "name": "Albert Gil Lopez",
+    "email": "albert@albertgilopez.es"
+  },
+  "plugins": [
+    {
+      "name": "shared-tree-guards",
+      "description": "Detects co-tenancy in a git clone and guards the shared index: blocks a commit that would sweep up another session's staged work, and an overwrite of paths with uncommitted changes. Silent when you are the only session.",
+      "version": "0.1.0",
+      "source": "./plugins/shared-tree-guards",
+      "category": "development"
+    }
+  ]
+}

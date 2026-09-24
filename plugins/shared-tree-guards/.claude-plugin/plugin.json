@@ -1,0 +1,11 @@
+{
+  "name": "shared-tree-guards",
+  "description": "Detects co-tenancy in a git clone and guards the shared index. Silent when you are the only session.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Albert Gil Lopez",
+    "email": "albert@albertgilopez.es"
+  },
+  "homepage": "https://github.com/albertgilopez/claude-shared-tree-guards",
+  "license": "MIT"
+}

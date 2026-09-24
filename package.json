@@ -1,0 +1,13 @@
+{
+  "name": "claude-shared-tree-guards",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code plugin: guards for git working trees shared by more than one agent session",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test/run-cases.mjs && node --test test/lib.test.mjs"
+  },
+  "devDependencies": {
+    "yaml": "^2.5.0"
+  }
+}

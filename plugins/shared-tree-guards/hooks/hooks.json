@@ -1,0 +1,39 @@
+{
+  "description": "Guards for a git working tree shared by more than one Claude Code session. Registers the session in <git-common-dir>/claude-sessions/ and, only when another live session is present, guards the shared index against a commit that would sweep up their staged work.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks-handlers/cotenancy.cjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks-handlers/cotenancy.cjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks-handlers/commit-guard.cjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
