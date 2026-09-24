@@ -132,3 +132,36 @@ On Windows the same directory has two spellings (`C:\Users\RUNNER~1\…` 8.3 vs 
 case), so a naive `===` would filter out every real co-tenant on a GitHub runner and take the
 whole bench green for the wrong reason. `git.canonical()` (`realpathSync.native` + lowercase on
 win32) is the single spelling everything compares through.
+
+## D-11 · The cost, measured (and the design change it forced)
+
+Windows, node 22, 60 invocations per arm, `test/cost.mjs`:
+
+| arm | per call | over baseline |
+|---|---:|---:|
+| baseline (node starts and exits) | 80 ms | — |
+| fast path (no `git commit` in the command) | 90 ms | **+10 ms** |
+| solo (a commit, nobody else here) | 144 ms | +64 ms |
+| shared (a commit, and it blocks) | 214 ms | +134 ms |
+
+**What this changed.** The design asserted that being `solo` cost "a directory read". The first
+measurement said **+331 ms, identical to `shared`** — because the handler resolved the repo, and
+then `state()` resolved it twice more, so three `git rev-parse` spawns happened *before* the gate
+had decided there was nothing to do. On Windows a process spawn is the expensive thing; the work
+is not. `resolveRepo()` now answers both questions in one spawn, memoised per cwd for the life of
+the (short-lived) hook process. Solo dropped from +331 ms to +64 ms, and the two arms finally
+differ, which is what the design had assumed all along.
+
+Read the table as: **almost every Bash call pays +10 ms**, and only a command containing
+`git commit` pays the rest.
+
+## D-12 · A performance measurement on broken code looks like a triumph
+
+The optimisation above introduced a syntax error. Every guard then died on line 1, and `cost.mjs`
+duly reported the cost **falling from 330 ms to 4 ms** — the best number this repo has ever
+produced, from code that could not block anything. The acceptance bench caught it (22 fail), but
+the timing arm did not, and a timing arm is exactly the kind of thing someone runs alone.
+
+`cost.mjs` now proves the guard still blocks in `shared` and still stays silent in `solo` before
+printing a single number, and that check was verified by breaking the guard on purpose and
+watching it refuse. Same shape as D-04 and D-09: **the measurement has to be able to fail.**

@@ -34,3 +34,9 @@ jobs:
 
       - name: acceptance cases against the real handlers
         run: node test/run-cases.mjs
+
+      - name: DR-8 — the guards write nothing but the registry
+        run: node test/no-side-effects.mjs
+
+      - name: negative control — every mutation must be caught
+        run: node test/negative-control.mjs

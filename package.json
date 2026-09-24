@@ -5,7 +5,10 @@
   "description": "Claude Code plugin: guards for git working trees shared by more than one agent session",
   "license": "MIT",
   "scripts": {
-    "test": "node test/run-cases.mjs && node --test test/lib.test.mjs"
+    "test": "node test/run-cases.mjs && node --test test/lib.test.mjs && node test/no-side-effects.mjs",
+    "test:negative": "node test/negative-control.mjs",
+    "test:cost": "node test/cost.mjs",
+    "test:session": "node test/e2e-real-session.mjs"
   },
   "devDependencies": {
     "yaml": "^2.5.0"

@@ -142,6 +142,8 @@ Exit:   0 = passa · 2 = bloqueja (el missatge arriba al model)
 - [ ] Amb **una sola sessió** (`solo`), el mateix cas d'AC-01 passa amb 0 i sense sortida (case: AC-16)
 - [ ] Un `git rm --cached` a la MATEIXA comanda no es confon amb un índex vell i passa amb 0 (case: AC-17)
 - [ ] Una sessió en un worktree **enllaçat** del mateix clon no compta com a co-tenant d'índex (case: AC-18)
+- [ ] Amb **una sola sessió**, `git checkout <ref> -- <path>` sobre un camí brut passa amb 0 i sense sortida (case: AC-19)
+- [ ] Un `git commit` sense pathspec **no** es bloqueja perquè hi hagi una sessió en un worktree enllaçat (case: AC-20)
 
 ## Verificació
 

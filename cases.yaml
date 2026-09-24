@@ -110,6 +110,30 @@
 
 - id: AC-18
   guard: cotenancy
-  repo: { live_sessions: 2, other_in_linked_worktree: true }
+  repo: { live_sessions: 2, self_in_linked_worktree: true }
   input: { mode: list, scope: tree }
   expected: { state: solo, others: 0 }
+
+- id: AC-19
+  guard: overwrite-guard
+  repo: { modified_uncommitted: [a.md], live_sessions: 0 }
+  input: { command: 'git checkout origin/main -- a.md' }
+  expected: { exit: 0, stderr: '' }
+
+# AC-20 tanca el forat que el propi control negatiu va assenyalar: AC-18 prova l'abast 'tree'
+# pel CLI de cotenancy, pero cap cas el provava a traves d'un GUARD -- mutar 'tree'->'clone' al
+# commit-guard no feia fallar res.
+#
+# Per aixo el meu index ha de portar una resta MEVA (d.md) que la comanda no stageja: amb abast
+# 'tree' el guard ni s'executa (ningu comparteix el meu arbre) i passa; amb abast 'clone' es
+# despertaria per la sessio del tronc i bloquejaria un commit que nomes em concerneix a mi. Sense
+# el d.md, els dos abasts donen el mateix i el cas no prova res.
+- id: AC-20
+  guard: commit-guard
+  repo:
+    staged: [a.md, b.md]            # l'altra sessio, al tronc
+    live_sessions: 2
+    self_in_linked_worktree: true
+    staged_in_worktree: [c.md, d.md]  # el MEU index, amb una resta meva que la comanda no stageja
+  input: { command: 'git add c.md && git commit -m "x"' }
+  expected: { exit: 0, stderr: '' }

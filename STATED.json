@@ -1,12 +1,11 @@
 {
-  "written_at": "2026-09-24T15:45:00+02:00",
+  "written_at": "2026-09-24T17:15:00+02:00",
   "at_commit": "aecde3736b576f7b908dcb75d11dacfce24bbaf8",
-  "where_we_are": "PUBLIC and green everywhere. github.com/albertgilopez/claude-shared-tree-guards, MIT. CI: 4/4 jobs (ubuntu-latest and windows-latest x node 20,22), each reporting 17 pass / 0 fail / 3 skip -- read from the run logs, not just the green tick. Installed on HP FROM GITHUB (not from a local path) and verified there: a real `claude -p` in a shared repo gets BLOCKED and creates no commit. T1-T4 plus T9/T10 done; T5-T8 and T11-T14 open.",
+  "where_we_are": "All three components done. T1-T10 complete. 22 acceptance cases (0 skip), 12 library tests, a 7-mutation negative-control suite where every mutation is caught, a DR-8 side-effects test, and two real claude -p sessions (blocked and warned). Public at github.com/albertgilopez/claude-shared-tree-guards, installed on HP from GitHub. Cost measured and it forced a design change (D-11).",
   "next": [
-    "T5 — port overwrite-guard (AC-08, AC-09) on exit 2 + stderr; it must use tree scope too",
-    "T6 — negative-control suite: one mutation per guard, permanent (three were done by hand today: the gate, the WARN channel, the bench itself)",
-    "T7 — DR-8 as a test: `git status --porcelain` unchanged after every guard",
-    "T8 — measure the per-call cost with solo and with shared, publish the number"
+    "T11 — install on DELL and WORKSTATION from GitHub (replaces propagating the hooks by hand)",
+    "T13 — let the KB consume the plugin and retire its duplicated hooks, once this has flown green for a while",
+    "T14 — the Medium piece: the five instruments that lied in green, with the numbers"
   ],
   "blocked": [],
   "waiting_on_albert": [
@@ -16,14 +15,16 @@
     "date": "2026-09-24",
     "session_identity": "(session_id, CLAUDE_PID) — probe-measured across SessionStart/PreToolUse/SessionEnd; process.pid and process.ppid are ephemeral and unusable (D-01)",
     "worktree_scope": "linked worktrees share --git-common-dir but have separate indexes (.git/worktrees/<n>/index) — guards use tree scope, the banner uses clone scope (D-07)",
-    "cases": "17 pass / 0 fail / 3 skip",
+    "cases": "22 pass / 0 fail / 0 skip",
     "lib_tests": "12 pass / 0 fail",
     "real_session": "claude -p blocked; the model quoted BLOCKED; 0 new commits (re-run on the tree-scope code, with the fixture carrying toplevel so it exercises the production path)",
-    "negative_control": "guard mutated to never block -> 12 pass / 4 fail",
+    "negative_control": "7 mutations, every one caught (test/negative-control.mjs). It also caught two holes in ITSELF: a baseline that accepted '0 pass / 21 skip' as green, and a scope mutation no case covered (now AC-20).",
     "linux_ci": "GREEN. 4/4 matrix jobs, 17 pass / 0 fail / 3 skip on each, verified in the run logs",
     "warn_mode": "WARN=1 measured with a falsifiable control: stderr-only -> the model sees nothing (FAIL); hookSpecificOutput.additionalContext -> the model sees it (ok). D-09",
     "transcript_mtime": "tracks activity in real time (2 s old while the session was running), so the liveness AND in D-02 is measured, not guessed",
-    "install_from_github": "claude plugin marketplace add albertgilopez/claude-shared-tree-guards + install -> real claude -p session blocked (test/e2e-real-session.mjs)"
+    "install_from_github": "claude plugin marketplace add albertgilopez/claude-shared-tree-guards + install -> real claude -p session blocked (test/e2e-real-session.mjs)",
+    "cost": "Windows, node 22, n=60: fast path +10 ms over a bare node start; solo +64 ms; shared +134 ms. The first measurement said solo cost +331 ms (three git rev-parse spawns before the gate) and that is why resolveRepo() exists.",
+    "side_effects": "DR-8 as a test: the whole .git and working tree hashed before/after every guard; the only path that changes is <git-common-dir>/claude-sessions/"
   },
   "not_doing_and_why": {
     "koncepto": "no .koncept/ in this repo — a public repo should not ask contributors to learn workspace governance that is not theirs; the invariants are the tests",

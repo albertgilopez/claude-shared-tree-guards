@@ -21,7 +21,10 @@ import { parse as parseYaml } from 'yaml';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const HANDLERS = path.join(ROOT, 'plugins', 'shared-tree-guards', 'hooks-handlers');
+// STG_HANDLERS_DIR lets negative-control.mjs point the bench at a MUTATED copy of the plugin
+// without ever touching the real one. A negative control that edits the tree it is testing is
+// one crash away from leaving a broken guard behind.
+const HANDLERS = process.env.STG_HANDLERS_DIR || path.join(ROOT, 'plugins', 'shared-tree-guards', 'hooks-handlers');
 const CASES = path.join(ROOT, 'cases.yaml');
 
 const argv = process.argv.slice(2);
@@ -170,13 +173,13 @@ function runHandler(guard, repo, input, env, runFrom) {
   const payload = {
     session_id: SELF_ID,
     transcript_path: null,
-    cwd: repo,
+    cwd: runFrom || repo,
     hook_event_name: 'PreToolUse',
     tool_name: 'Bash',
     tool_input: { command: input.command },
   };
   const r = spawnSync(process.execPath, [file], {
-    cwd: repo,
+    cwd: runFrom || repo,
     input: JSON.stringify(payload),
     encoding: 'utf8',
     env: { ...process.env, ...env, CLAUDE_CODE_SESSION_ID: SELF_ID, CLAUDE_PID: String(process.pid) },
@@ -232,13 +235,19 @@ for (const c of cases) {
       else plantSessions(repo, 1);
     }
 
-    // A linked worktree of the SAME clone: shares the registry, has its own index.
+    // A linked worktree of the SAME clone: shares the registry, has its OWN index.
+    // The session under test lives in the worktree; the planted co-tenant sits in the main
+    // tree with its own staged work. That is the shape the guards must not confuse.
     let runFrom = null;
-    if (spec.other_in_linked_worktree) {
-      execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+    if (spec.self_in_linked_worktree) {
       const wt = path.join(repo, 'wt');
       execFileSync('git', ['worktree', 'add', '-q', '-b', 'side', wt], { cwd: repo, stdio: 'ignore' });
-      runFrom = fs.realpathSync(wt);   // the session under test lives in the worktree
+      runFrom = fs.realpathSync(wt);
+      for (const f of spec.staged_in_worktree || []) {
+        fs.writeFileSync(path.join(runFrom, f), `content of ${f}
+`);
+        execFileSync('git', ['add', '--', f], { cwd: runFrom });
+      }
     }
 
     const env = { ...(c.env || {}) };

@@ -1,5 +1,5 @@
 {
-  "description": "Guards for a git working tree shared by more than one Claude Code session. Registers the session in <git-common-dir>/claude-sessions/ and, only when another live session is present, guards the shared index against a commit that would sweep up their staged work.",
+  "description": "Guards for a git working tree shared by more than one Claude Code session. Registers the session in <git-common-dir>/claude-sessions/ and, only when another live session shares this working tree, guards the shared index against a commit that would sweep up their staged work and the tree against a checkout/restore/reset that would overwrite their uncommitted changes.",
   "hooks": {
     "SessionStart": [
       {
@@ -30,6 +30,11 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks-handlers/commit-guard.cjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks-handlers/overwrite-guard.cjs\"",
             "timeout": 30
           }
         ]

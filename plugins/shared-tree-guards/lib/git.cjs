@@ -41,10 +41,36 @@ function canonical(p) {
   return process.platform === 'win32' ? out.toLowerCase() : out;
 }
 
+/**
+ * One `git rev-parse` for both answers, memoised per cwd.
+ *
+ * MEASURED 2026-09-24 (Windows): the guard was spending ~330 ms on a `git commit` EVEN WHEN
+ * SOLO, and the design had assumed solo cost "a directory read". It was three separate
+ * `git rev-parse` spawns before the gate had even decided there was nothing to do
+ * (topLevel from the handler, then topLevel and gitCommonDir again from inside `state()`).
+ * A process spawn is the expensive thing here, not the work.
+ *
+ * The memo is safe precisely because a hook process is short-lived: it cannot outlive the
+ * repo layout it cached. Nothing here is cached ACROSS invocations.
+ */
+const _memo = new Map();
+function resolveRepo(cwd) {
+  const key = String(cwd);
+  if (_memo.has(key)) return _memo.get(key);
+  const out = git(['rev-parse', '--show-toplevel', '--git-common-dir'], cwd);
+  let v = { topLevel: null, commonDir: null };
+  if (out) {
+    const [top, common] = out.split(/\r?\n/).map((x) => x.trim());
+    if (top) v.topLevel = canonical(top);
+    if (common) v.commonDir = path.isAbsolute(common) ? path.resolve(common) : path.resolve(cwd, common);
+  }
+  _memo.set(key, v);
+  return v;
+}
+
 /** Absolute, canonical path of the repo's working tree root, or null. */
 function topLevel(cwd) {
-  const out = git(['rev-parse', '--show-toplevel'], cwd);
-  return out ? canonical(out) : null;
+  return resolveRepo(cwd).topLevel;
 }
 
 /**
@@ -56,9 +82,7 @@ function topLevel(cwd) {
  * is it absolute. Resolving against cwd is not optional.
  */
 function gitCommonDir(cwd) {
-  const out = git(['rev-parse', '--git-common-dir'], cwd);
-  if (!out) return null;
-  return path.isAbsolute(out) ? path.resolve(out) : path.resolve(cwd, out);
+  return resolveRepo(cwd).commonDir;
 }
 
-module.exports = { git, topLevel, gitCommonDir, canonical, TIMEOUT_MS };
+module.exports = { git, topLevel, gitCommonDir, canonical, resolveRepo, TIMEOUT_MS };

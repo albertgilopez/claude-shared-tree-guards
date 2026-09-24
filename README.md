@@ -41,7 +41,7 @@ claude plugin install shared-tree-guards@shared-tree-guards
 |---|---|---|
 | `cotenancy` | SessionStart / SessionEnd | Registers the session in `<git-common-dir>/claude-sessions/`; prints one warning if someone else is already there. **Never blocks** (DR-6). |
 | `commit-guard` | `PreToolUse(Bash)` | Blocks a `git commit` whose index holds paths this command did not stage, or staged deletions of files that are on disk. |
-| `overwrite-guard` | `PreToolUse(Bash)` | *Not implemented yet (T5).* `checkout` / `restore` / `reset --hard` / `clean -f` over paths with uncommitted changes. |
+| `overwrite-guard` | `PreToolUse(Bash)` | Blocks `checkout <ref> -- <path>`, `restore`, `reset --hard` and `clean -f` when those paths hold uncommitted changes. These are the git commands that destroy work with no reflog, no stash and nothing dangling to recover from. |
 
 The registry lives in `git rev-parse --git-common-dir` because every worktree of a clone shares
 that directory and two clones never do: **the scope of detection is the scope of the problem, by
