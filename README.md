@@ -52,12 +52,20 @@ claude plugin marketplace add albertgilopez/claude-shared-tree-guards
 claude plugin install shared-tree-guards@shared-tree-guards
 ```
 
+It takes effect in the **next** session: plugins load at session start. To update later:
+
+```bash
+claude plugin marketplace update shared-tree-guards
+claude plugin update shared-tree-guards
+```
+
 ## What it does
 
 | Component | When | What |
 |---|---|---|
 | `cotenancy` | SessionStart / SessionEnd | Registers this Claude Code session in `<git-common-dir>/claude-sessions/` and removes it on exit; prints one warning if another session is already there. **Never blocks** (DR-6). |
 | `commit-guard` | `PreToolUse(Bash)` | Blocks a `git commit` whose index holds paths this command did not stage, or staged deletions of files that are on disk. |
+| **subagents** | `PreToolUse(Bash)` | Subagents of your session share its index and no registry can see them (same session, same process). A Bash call from a subagent carries `agent_id`, so the guards treat it as co-tenancy directly — and the session's own later commands are guarded too, for 30 minutes after a subagent last acted. |
 | `overwrite-guard` | `PreToolUse(Bash)` | Blocks `checkout <ref> -- <path>`, `restore`, `reset --hard` and `clean -f` when those paths hold uncommitted changes. These are the git commands that destroy work with no reflog, no stash and nothing dangling to recover from. |
 
 The registry lives in `git rev-parse --git-common-dir` because every worktree of a clone shares
@@ -70,7 +78,7 @@ construction** — no process enumeration, nothing OS-specific.
 |---|---|---|
 | Two `claude` sessions in the same folder | **yes** | both register, different PIDs, same working tree |
 | A session and a `claude -p` it spawns | **yes** | the child gets its own `session_id` and `CLAUDE_PID` |
-| A session and one of its own subagents | no | same process, same `CLAUDE_PID`; it is you, not someone else |
+| A session and its own **subagents** | **yes** | they share one index and cannot see what the others staged; detected from `agent_id` in the hook payload, not from the registry |
 | Sessions in **different worktrees** of one clone | they see each other, but the guards stay quiet | they share `.git`, not the index |
 | Sessions in **different clones** | no | nothing is shared, and nothing is at risk |
 

@@ -185,3 +185,48 @@ Two consequences, and both are decisions rather than gaps:
 2. **If that ever has to change, the shape is a public `register` command** any process could
    call, not a looser gate. The gate is what makes the plugin publishable (D-02); loosening it
    would trade a real guarantee for an imaginary one.
+
+## D-14 · A subagent is a co-tenant, and the registry cannot see it
+
+You can launch subagents from inside a Claude Code session, and they share the session's working
+tree and its **one** index. For a while this plugin was silent for exactly that case, which is
+the one people hit most: several subagents at once, one index, none of them able to see what the
+others staged.
+
+**Why the registry cannot help.** Measured 2026-09-24 with a probe hook:
+
+| call | `session_id` | `CLAUDE_PID` | payload carries |
+|---|---|---|---|
+| from a subagent | `1ebd383d` | 65856 | **`agent_id`, `agent_type`** |
+| from the main session | `1ebd383d` | 65856 | *(neither)* |
+
+Same session, same process. Anything built on PIDs or session ids is blind here — and worse, the
+pid-dedupe added in D-02 would actively discard them.
+
+**What solves it is that the payload already says so.** A subagent's Bash call *does* reach
+`PreToolUse`, and it carries `agent_id`. If a command comes from a subagent then, by
+construction, there are at least two actors on this index: the subagent, the session that spawned
+it, and possibly siblings running in parallel. That is co-tenancy **demonstrated by the payload
+itself** — no lookup, no write, no inference. It is the strongest signal in the codebase, not a
+weaker one.
+
+**Both directions, or it is half a guard.** The main session can just as easily sweep up what a
+subagent staged. The main session's payload says nothing, so the first time a subagent is seen
+the guard writes `lastSubagentAt` into this session's own registry entry (one small write, at
+most once a minute), and the session's later commands are guarded while that is recent
+(`SHARED_TREE_GUARDS_SUBAGENT_MINUTES`, default 30).
+
+Verified with a real subagent in a real session, **with no other session present**, in
+`test/e2e-subagent.mjs`: the subagent was blocked, the message told it that it was a subagent,
+and no commit was created. Two mutations in the negative-control suite hold each direction.
+
+## D-15 · `claude plugin update` keys off the version, not off commits
+
+Pushing to `main` changes nothing for an installed user. `claude plugin update` compares the
+`version` in the manifest and answers *"already at the latest version"* while the installed cache
+(`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`) stays on the old build.
+
+Found the hard way: the subagent work was pushed, the plugin "updated", and the test kept
+exercising a cached build that only had `commit-guard` in its `hooks.json`. **Bump the version in
+both manifests for any change that should reach users**, and remember the plugin runs from that
+cache, not from the marketplace clone.

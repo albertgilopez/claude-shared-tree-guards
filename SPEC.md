@@ -3,11 +3,12 @@
 > **Scope, first, because it is the whole design.** This is for **Claude Code sessions**. N
 > sessions at once on **one git clone**. Git has a single index and a single working tree per
 > clone, so ordinary commands become destructive without warning. The industry answer is to
-> avoid the situation (one worktree per agent); this is for when you cannot.
+> avoid the situation (one worktree per session); this is for when you cannot.
 >
-> It detects **Claude Code sessions**, because they are what registers. Anything else sharing
-> the tree is invisible to it: see "Known limit" below. That is a deliberate boundary, not an
-> oversight.
+> It detects **Claude Code sessions and their subagents**. Sessions because they register;
+> subagents because their Bash calls carry `agent_id` and no registry could ever see them
+> (same session, same process). Anything else sharing the tree is invisible to it: see "Known
+> limit" below. That is a deliberate boundary, not an oversight.
 
 ## Context and state of the art (verified 2026-09-24)
 
@@ -35,10 +36,10 @@ workspace's own tier model); anything that touches the VCS or orchestrates agent
 
 ## Known limit, stated up front
 
-The co-tenancy gate only sees what **registers**, and only Claude Code sessions with this plugin
-loaded do. Share a working tree with a script, a cron, an editor plugin that commits on a timer,
-or another agent CLI, and the plugin will report `solo` and stay quiet exactly when it should
-speak.
+The co-tenancy gate sees Claude Code sessions with this plugin loaded (they register) and their
+subagents (their calls carry `agent_id`). It sees nothing else. Share a working tree with a
+script, a cron, an editor plugin that commits on a timer, or another agent CLI, and the plugin
+will report `solo` and stay quiet exactly when it should speak.
 
 This is the price of the decision that makes it publishable (see below). It is in the README as
 well, in the first third, because a user has to know it before they rely on it.
@@ -107,8 +108,8 @@ the model** (measured; see DOCTRINE D-09).
 
 | State | Condition |
 |---|---|
-| `solo` | 0 other live entries |
-| `shared` | ≥1 other live entry in scope |
+| `shared` | ≥1 other live entry in scope, **or** the call comes from a subagent (`agent_id` in the payload), **or** a subagent of this session acted recently |
+| `solo` | none of the above |
 | `unknown` | not inside a repo, or `.git` is not writable |
 
 Two scopes, and they are not interchangeable:
@@ -140,6 +141,10 @@ Two scopes, and they are not interchangeable:
   would block **every commit** in a workspace that opens one worktree per session, which is
   exactly the workflow this exists for. Hence the two scopes of `state()`.
 - **Two different clones** → never count.
+- **A subagent of this session** → counts, always. It shares the one index and no registry can
+  see it (same `session_id`, same `CLAUDE_PID`); the evidence is `agent_id` in the payload. The
+  reverse direction too: after a subagent acts, the session's own commands are guarded for
+  `SHARED_TREE_GUARDS_SUBAGENT_MINUTES` (default 30).
 - A PID recycled by the OS → the entry also carries the transcript, and liveness requires both.
 
 ## Acceptance criteria
@@ -164,6 +169,9 @@ Two scopes, and they are not interchangeable:
 - [ ] A session in a **linked worktree** of the same clone is not an index co-tenant (case: AC-18)
 - [ ] With **a single session**, `git checkout <ref> -- <path>` over a dirty path passes with 0 and no output (case: AC-19)
 - [ ] A `git commit` with no pathspec is **not** blocked merely because a session exists in a linked worktree (case: AC-20)
+- [ ] A command coming from a **subagent** is guarded even with no other session present (case: AC-21)
+- [ ] And so is the main session, right after a subagent of its own acted (case: AC-22)
+- [ ] The same for `overwrite-guard` (case: AC-23)
 
 ## Verification
 
