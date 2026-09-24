@@ -1,6 +1,6 @@
 {
   "written_at": "2026-09-24T12:55:00+02:00",
-  "at_commit": "PENDING-FIRST-COMMIT",
+  "at_commit": "9abe995ad5251b82ed44c7abac191745b42f8b97",
   "where_we_are": "T1-T4 done and green on Windows. The repo is installable (validated + installed locally from a path marketplace) and the commit-guard blocks for real behind the co-tenancy gate. 16/17 acceptance cases pass, 3 skip (they need overwrite-guard, T5). The bench was proven able to fail: mutating the guard to never block takes it from 16 pass/0 fail to 12 pass/4 fail.",
   "next": [
     "T5 — port overwrite-guard (AC-08, AC-09); unifies on exit 2 + stderr, drops the permissionDecision JSON protocol the KB version used",
