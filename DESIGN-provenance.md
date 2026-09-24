@@ -115,9 +115,9 @@ MODIFY  (KB) knowledge/setup/machines/INDEX.md — el plugin com a via de propag
 
 | Decisió | Per què |
 |---|---|
-| Viu a `<git-common-dir>/claude-sessions/` | `git rev-parse --git-common-dir` és compartit pels worktrees d'un clon i **no** entre clons: abast de detecció == abast del problema, per construcció |
-| Un fitxer per PID (`<pid>.json`) | Escriptures independents: dues sessions mai xoquen al mateix fitxer. Mateix patró que `acta-<dia>-<HOST>.jsonl` |
-| Vivacitat amb `process.kill(pid, 0)` | Portable, sense spawns. `ESRCH` = mort; `EPERM` = viu i d'un altre usuari |
+| Viu a `<git-common-dir>/claude-sessions/` | `git rev-parse --git-common-dir` és compartit pels worktrees d'un clon i **no** entre clons. ⚠️ **Matisat 24/09, mesurat**: això fa que l'abast del REGISTRE sigui el clon, però l'abast del **perill de l'índex** és l'arbre — un worktree enllaçat té el seu propi `index` a `.git/worktrees/<nom>/`. D'aquí que `state()` tingui dos abasts: `clone` (banner) i `tree` (guards) |
+| Un fitxer per SESSIÓ (`<session_id>.json`) | Escriptures independents: dues sessions mai xoquen al mateix fitxer. Mateix patró que `acta-<dia>-<HOST>.jsonl`. ⚠️ **Corregit 24/09 en implementar-ho**: el disseny deia `<pid>.json` i el pid del hook és efímer (un fill que mor abans del hook següent) — la clau estable és el `session_id` |
+| Vivacitat: `process.kill(CLAUDE_PID, 0)` **I** transcript fresc | Portable, sense spawns. `ESRCH` = mort; `EPERM` = viu i d'un altre usuari. ⚠️ **Corregit 24/09**: el pid que cal és el de `CLAUDE_PID` (el procés de la sessió), no `process.pid`; i s'hi afegeix la frescor del `transcript_path` — les dues condicions ANDed esbiaixen cap a `solo`, que és el fals que ens podem permetre. Mesurat: el transcript s'actualitza en temps real (2 s) |
 | Es guarda `startedAt` i `cwd` | Per al missatge (*"2 altres sessions, la més antiga de fa 3 h"*) |
 | Entrades mortes: s'ignoren i s'esborren de passada | DR-7. Mai demanar neteja a ningú |
 
@@ -155,6 +155,24 @@ nivell més amunt):
 | DR-4 | AC-13, i una prova que el missatge de bloqueig nomena la variable |
 | DR-5 | AC-15 |
 | DR-8 | prova nova: després de córrer els 3 guards, `git status --porcelain` no ha canviat |
+
+## El que la implementació va desmentir (24/09/2026)
+
+Tres afirmacions d'aquest disseny eren premisses, no mesures, i el codi les va tombar. Es
+corregeixen **a la taula de dalt** en lloc d'esborrar-les, perquè el valor és el delta:
+
+1. **`<pid>.json` → `<session_id>.json`** i **`process.pid` → `CLAUDE_PID`**. Un hook és un procés
+   fill efímer: registrar el seu pid hauria donat `solo` sempre i guards que no disparen mai, amb
+   el banc en verd.
+2. **"abast de detecció == abast del problema"** és mig cert: ho és per al registre, no per als
+   guards. Un worktree enllaçat comparteix `.git` i **no** l'índex.
+3. **`SHARED_TREE_GUARDS_WARN=1`** tal com estava dissenyat (stderr + exit 0) **no arriba al
+   model**. Cal `hookSpecificOutput.additionalContext`.
+
+I una que el disseny no contemplava: **`SessionEnd` existeix** i esborra l'entrada, cosa que
+elimina la major part del residu que el § de reciclatge de PID donava per inevitable.
+
+Detall i mesures: `DOCTRINE.md` D-01 · D-02 · D-07 · D-09 del repo.
 
 ## Riscos
 
